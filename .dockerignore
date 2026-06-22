@@ -1,0 +1,8 @@
+node_modules
+dist
+demo
+preview
+.git
+*.log
+.DS_Store
+**/*.test.ts

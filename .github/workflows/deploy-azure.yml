@@ -1,0 +1,38 @@
+# One DSD vNext — build the container and deploy to Azure Container Apps.
+# One-time setup (repo Settings → Secrets and variables → Actions):
+#   Secrets:  AZURE_CREDENTIALS  (output of: az ad sp create-for-rbac --sdk-auth ...)
+#   Variables: ACR_NAME, RESOURCE_GROUP, CONTAINERAPP_NAME
+# The app reads DATABASE_URL + SESSION_SECRET from Container Apps secrets
+# (set once in Azure, see ops notes) — they are NOT in this file.
+name: deploy-azure
+on:
+  push: { branches: [ main ] }
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm" }
+      - run: npm ci
+      - run: npm run verify        # build + tests + spine + web + migrations check
+
+  build-and-deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Build image in ACR
+        run: az acr build -r ${{ vars.ACR_NAME }} -t one-dsd-vnext:${{ github.sha }} .
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ vars.CONTAINERAPP_NAME }} \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --image ${{ vars.ACR_NAME }}.azurecr.io/one-dsd-vnext:${{ github.sha }}

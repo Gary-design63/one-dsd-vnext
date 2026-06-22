@@ -1,0 +1,59 @@
+# One DSD vNext — CI. Applies ONLY to this build.
+name: ci
+on:
+  push: { branches: [ main ] }
+  pull_request: {}
+
+jobs:
+  verify:
+    name: build · typecheck · tests · spine · a11y · smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm" }
+      - run: npm ci
+      - run: npm run verify        # migrations + spine + web + typecheck + build + unit tests
+      - run: npm run a11y          # accessibility scan (0 problems required)
+      - run: npm run smoke         # boots the app, checks health/headers/cache/404
+
+  migrations:
+    name: migrate against ephemeral Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: one_dsd
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/one_dsd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm" }
+      - run: npm ci
+      - run: npm run build
+      - name: Apply all migrations
+        run: node scripts/migrate.mjs --apply
+      - name: Verify every migration registered
+        run: |
+          COUNT=$(node -e "const{getDb,closeDb}=require('./dist/db.js');getDb().query('select count(*)::int n from schema_migrations').then(r=>{console.log(r.rows[0].n);return closeDb();})")
+          echo "registered migrations: $COUNT"
+          test "$COUNT" -ge 19
+
+  e2e:
+    name: playwright e2e (browser)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "npm" }
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

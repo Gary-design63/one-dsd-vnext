@@ -1,0 +1,34 @@
+{
+  "name": "one-dsd-vnext",
+  "version": "0.7.0",
+  "private": true,
+  "description": "One DSD vNext \u2014 consultant operating system (separate clean build). Layers 6-7.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/asset-manifest.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js",
+    "verify:migrations": "node scripts/check-migrations.mjs",
+    "verify:spine": "node scripts/verify-spine.mjs",
+    "verify:web": "node scripts/verify-web.mjs",
+    "test": "node --test 'dist/**/*.test.js'",
+    "verify": "npm run verify:migrations && npm run verify:spine && npm run verify:web && npm run typecheck && npm run build && npm run test",
+    "ingest": "node scripts/ingest.mjs",
+    "a11y": "node scripts/a11y-scan.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "e2e": "playwright test",
+    "ci": "npm run verify && npm run a11y && npm run smoke"
+  },
+  "dependencies": {
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "typescript": "^5.5.0"
+  }
+}

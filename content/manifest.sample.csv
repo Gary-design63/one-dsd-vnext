@@ -1,0 +1,5 @@
+source_id,decision,kind,title,label,summary,description,body_file,format,proficiency_band,discipline_cluster,visibility
+leg-asset-001,keep,asset,Plain-language guide to MnCHOICES,,A clear walkthrough for new assessors.,,bodies/mnchoices-guide.md,guide,emerging,HRC,staff
+leg-coll-001,keep,collection,,New Staff Orientation,,The first things every new team member should see.,,,,,staff
+leg-path-001,revise,learning_path,Foundations of equitable practice,,Build the shared language the division relies on.,,,,emerging,,staff
+leg-asset-209,retire,asset,Outdated 2019 policy memo,,,,,,,,
