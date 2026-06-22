@@ -58,8 +58,14 @@ let db: Db | null = null;
 export function getDb(): Db {
   if (db) return db;
   const cfg = loadConfig();
+  // Managed Postgres (Supabase / Azure) requires TLS. node-postgres >=8.2x
+  // treats sslmode=require as verify-full, which fails against the Supabase
+  // pooler's cert chain — so we set SSL explicitly here and don't depend on
+  // the connection-string sslmode. Local/dev (localhost) connects without TLS.
+  const isLocal = /@(localhost|127\.0\.0\.1)(:|\/)/.test(cfg.databaseUrl);
   pool = new Pool({
     connectionString: cfg.databaseUrl,
+    ssl: isLocal ? undefined : { rejectUnauthorized: false },
     max: 10,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
