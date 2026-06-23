@@ -91,3 +91,43 @@ export async function recentOverrides(db: Db, limit = 20): Promise<OverrideView[
   );
   return rows;
 }
+
+// ---- R3: settable dials + after-action activity ledger --------------
+const AUTONOMY_VALUES = new Set(["blocked", "propose_only", "act_then_report"]);
+
+/** Consultant sets the global autonomy ceiling (the master dial). */
+export async function setCeiling(db: Db, viewer: Viewer, value: string): Promise<boolean> {
+  if (!isAuthority(viewer)) return false;
+  if (!AUTONOMY_VALUES.has(value)) return false;
+  await db.query(
+    `UPDATE program_controls SET value = $1, updated_by = $2, updated_at = now()
+       WHERE key = 'default_autonomy_ceiling'`,
+    [value, viewer.userId],
+  );
+  await audit(db, { actorId: viewer.userId, action: "controls.ceiling", detail: { value }, traceId: newTraceId() });
+  return true;
+}
+
+/** Consultant sets one persona's default autonomy (per-class dial). */
+export async function setPersonaAutonomy(db: Db, viewer: Viewer, key: string, value: string): Promise<boolean> {
+  if (!isAuthority(viewer)) return false;
+  if (!AUTONOMY_VALUES.has(value)) return false;
+  const r = await db.query(`UPDATE agent_personas SET default_autonomy = $1 WHERE key = $2`, [value, key]);
+  await audit(db, {
+    actorId: viewer.userId, action: "controls.persona_autonomy",
+    target: `persona:${key}`, detail: { value }, traceId: newTraceId(),
+  });
+  return (r.rowCount ?? 0) > 0;
+}
+
+export interface LedgerRow { persona_key: string | null; action: string | null; tool: string | null; status: string | null; created_at: Date; }
+
+/** After-action ledger: what agents actually did (management by exception). */
+export async function activityLedger(db: Db, limit = 25): Promise<LedgerRow[]> {
+  const { rows } = await db.query<LedgerRow>(
+    `SELECT persona_key, action, tool, status, created_at
+       FROM agent_run_events ORDER BY created_at DESC LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}

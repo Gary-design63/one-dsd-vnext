@@ -10,6 +10,7 @@ import { audit, newTraceId } from "../audit/audit.js";
 import { retrieve } from "./retrieval.js";
 import { decideDisposition, framingFor } from "./confidence.js";
 import { getProvider } from "./provider.js";
+import { loadProgramConfig } from "../config/programConfig.js";
 import type { AskRequest, AskResult, Candidate, Citation } from "./types.js";
 
 const MAX_CITED = 3;
@@ -61,7 +62,11 @@ export async function ask(db: Db, req: AskRequest): Promise<AskResult> {
     let usedProvider = false;
     if (provider.available()) {
       try {
-        answer = await provider.synthesize(req.question, passages.map((p) => p.content));
+        const cfg = await loadProgramConfig(db);
+        answer = await provider.synthesize(req.question, passages.map((p) => p.content), {
+          programName: cfg.identity.programName,
+          audience: cfg.identity.anchorClient,
+        });
         usedProvider = true;
       } catch {
         /* fall back to extractive — never fail to a fabricated answer */

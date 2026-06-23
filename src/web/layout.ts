@@ -61,9 +61,22 @@ export interface LayoutOptions {
   description?: string;
   /** authority + edit mode: enable in-place editing on this render */
   editAllowed?: boolean;
+  /** optional brand identity (multi-client; from program_config). Defaults to DSD. */
+  brand?: { shortName?: string; sub?: string; footer?: string };
+}
+
+let configuredBrand: { shortName?: string; sub?: string; footer?: string } | null = null;
+
+/** Set the active instance brand once at startup (from program_config). */
+export function setProgramBrand(b: { shortName?: string; sub?: string; footer?: string } | null): void {
+  configuredBrand = b;
 }
 
 export function page(opts: LayoutOptions): string {
+  const b = opts.brand ?? configuredBrand ?? undefined;
+  const brandName = b?.shortName && b.shortName.length > 0 ? b.shortName : "One DSD";
+  const brandSub = b?.sub && b.sub.length > 0 ? b.sub : "People, Access & Culture";
+  const brandFooter = b?.footer && b.footer.length > 0 ? b.footer : "One DSD — Disability Services Division. Internal program surface.";
   const scriptList = [...(opts.scripts ?? [])];
   if (opts.editAllowed) scriptList.push("/static/edit.js");
   const scripts = scriptList.map(
@@ -74,7 +87,7 @@ export function page(opts: LayoutOptions): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${opts.title} · One DSD</title>
+  <title>${opts.title} · ${brandName}</title>
   ${opts.description ? html`<meta name="description" content="${opts.description}" />` : raw("")}
   <link rel="stylesheet" href="${assetUrl("app.css")}" />
 </head>
@@ -82,10 +95,10 @@ export function page(opts: LayoutOptions): string {
   <a href="#main" class="skip-link">Skip to main content</a>
   <header class="masthead" role="banner">
     <div class="masthead__inner">
-      <a href="/" class="brand" aria-label="One DSD home">
+      <a href="/" class="brand" aria-label="${brandName} home">
         <span class="brand__rule" aria-hidden="true"></span>
-        <span class="brand__name">One DSD</span>
-        <span class="brand__sub">People, Access &amp; Culture</span>
+        <span class="brand__name">${brandName}</span>
+        <span class="brand__sub">${brandSub}</span>
       </a>
       ${nav(opts.nav)}
     </div>
@@ -94,7 +107,7 @@ export function page(opts: LayoutOptions): string {
     ${opts.body}
   </main>
   <footer class="footsite" role="contentinfo">
-    <p>One DSD — Disability Services Division. Internal program surface.</p>
+    <p>${brandFooter}</p>
     <p class="footsite__humility">Shared to inform, never to perform. We defer to community voice.</p>
   </footer>
   ${scripts}

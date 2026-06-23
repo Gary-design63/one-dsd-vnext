@@ -41,6 +41,7 @@ import {
   fetchLearningPath,
   fetchPodcastEpisodes,
   fetchEpisodeMedia,
+  fetchEpisodeAudioBytes,
   fetchSurveys,
   journeyDoors,
 } from "./data.js";
@@ -256,6 +257,17 @@ export async function handleAudioMedia(
   res: ServerResponse,
   episodeId: string,
 ): Promise<void> {
+  // Prefer streaming in-database audio bytes (imported episodes) when present.
+  const stored = await fetchEpisodeAudioBytes(db, viewer, episodeId);
+  if (stored) {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", stored.mime);
+    res.setHeader("Content-Length", String(stored.bytes.length));
+    res.setHeader("Accept-Ranges", "none");
+    res.setHeader("Cache-Control", "private, no-store");
+    res.end(stored.bytes);
+    return;
+  }
   const url = await fetchEpisodeMedia(db, viewer, episodeId);
   if (!url) { res.statusCode = 404; res.end("Not found"); return; }
   // No token in the page; the deliverable URL is minted here, short-lived.

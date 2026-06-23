@@ -114,14 +114,15 @@ import { renderControls } from "./pages/console/controls.js";
 import {
   getAutomationState, getCeiling, setAutomationState,
   recordOverride, listPersonas, recentOverrides,
+  setCeiling, setPersonaAutonomy, activityLedger,
 } from "../agents/controls.js";
 
 export async function controlsPage(db: Db, viewer: Viewer, res: ServerResponse): Promise<void> {
   if (!canOperateConsole(viewer)) return forbidden(res);
-  const [automationState, ceiling, personas, overrides] = await Promise.all([
-    getAutomationState(db), getCeiling(db), listPersonas(db), recentOverrides(db),
+  const [automationState, ceiling, personas, overrides, ledger] = await Promise.all([
+    getAutomationState(db), getCeiling(db), listPersonas(db), recentOverrides(db), activityLedger(db),
   ]);
-  sendHtml(res, 200, renderControls({ nav: { viewer, active: "console" }, automationState, ceiling, personas, overrides }));
+  sendHtml(res, 200, renderControls({ nav: { viewer, active: "console" }, automationState, ceiling, personas, overrides, ledger }));
 }
 
 export async function controlsSetAutomation(db: Db, viewer: Viewer, req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -143,6 +144,20 @@ export async function controlsOverride(db: Db, viewer: Viewer, req: IncomingMess
     action,
     reason: form["reason"] || null,
   });
+  if (!ok) return forbidden(res);
+  redirect(res, "/console/controls");
+}
+
+export async function controlsSetCeiling(db: Db, viewer: Viewer, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const form = await readFormBody(req);
+  const ok = await setCeiling(db, viewer, String(form["value"] ?? ""));
+  if (!ok) return forbidden(res);
+  redirect(res, "/console/controls");
+}
+
+export async function controlsSetPersona(db: Db, viewer: Viewer, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const form = await readFormBody(req);
+  const ok = await setPersonaAutonomy(db, viewer, String(form["key"] ?? ""), String(form["value"] ?? ""));
   if (!ok) return forbidden(res);
   redirect(res, "/console/controls");
 }

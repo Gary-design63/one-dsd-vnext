@@ -11,6 +11,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { loadConfig } from "./config.js";
 import { getDb, closeDb } from "./db.js";
+import { loadProgramConfig } from "./config/programConfig.js";
+import { setProgramBrand } from "./web/layout.js";
 import { randomUUID } from "node:crypto";
 import { applySecurityHeaders } from "./security/headers.js";
 import { log, captureError } from "./obs/log.js";
@@ -54,6 +56,8 @@ import {
   controlsPage,
   controlsSetAutomation,
   controlsOverride,
+  controlsSetCeiling,
+  controlsSetPersona,
   historyPage,
   historyRollback,
   historyNote,
@@ -149,6 +153,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       { const g = GROWTH_RECO.exec(path); if (g) return handleRecoAction(db, viewer, req, res, g[1]!, g[2] as "accept" | "dismiss"); }
       if (path === "/console/controls/automation") return controlsSetAutomation(db, viewer, req, res);
       if (path === "/console/controls/override") return controlsOverride(db, viewer, req, res);
+      if (path === "/console/controls/ceiling") return controlsSetCeiling(db, viewer, req, res);
+      if (path === "/console/controls/persona") return controlsSetPersona(db, viewer, req, res);
       if (path === "/console/history/rollback") return historyRollback(db, viewer, req, res);
       if (path === "/console/history/note") return historyNote(db, viewer, req, res);
       const dec = C_REVIEW_DECIDE.exec(path);
@@ -182,6 +188,8 @@ function isAppPage(path: string, method: string): boolean {
       GROWTH_RECO.test(path) ||
       path === "/console/controls/automation" ||
       path === "/console/controls/override" ||
+      path === "/console/controls/ceiling" ||
+      path === "/console/controls/persona" ||
       path === "/console/history/rollback" ||
       path === "/console/history/note" ||
       C_REVIEW_DECIDE.test(path) ||
@@ -219,6 +227,15 @@ if (isMain) {
   const server = createApp();
   server.listen(cfg.port, () => {
     console.log(`One DSD vNext listening on :${cfg.port} (${cfg.env})`);
+    // Load the active instance brand from program_config (fail-open to DSD defaults).
+    void (async () => {
+      try {
+        const pc = await loadProgramConfig(getDb());
+        setProgramBrand({ shortName: pc.naming.brandShort, sub: pc.naming.brandSub, footer: pc.naming.brandFooter });
+      } catch {
+        /* config table not applied yet -> hardcoded DSD defaults remain */
+      }
+    })();
   });
   const shutdown = async (): Promise<void> => {
     server.close();

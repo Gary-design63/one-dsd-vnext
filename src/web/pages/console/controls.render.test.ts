@@ -10,6 +10,7 @@ test("controls page: kill-switch + authority banner, a11y, no AI wording", () =>
     nav, automationState: "active", ceiling: "propose_only",
     personas: [{ key: "chief_of_staff", label: "Chief of Staff", default_autonomy: "act_then_report", active: true }],
     overrides: [],
+    ledger: [],
   });
   assert.match(doc, /<html lang="en">/);
   assert.equal((doc.match(/<h1[ >]/g) || []).length, 1);
@@ -21,7 +22,7 @@ test("controls page: kill-switch + authority banner, a11y, no AI wording", () =>
 
 test("controls page: paused state offers resume", () => {
   const doc = renderControls({
-    nav, automationState: "paused", ceiling: "propose_only", personas: [], overrides: [],
+    nav, automationState: "paused", ceiling: "propose_only", personas: [], overrides: [], ledger: [],
   });
   assert.match(doc, /Resume all automation/);
 });

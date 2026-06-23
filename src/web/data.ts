@@ -322,11 +322,14 @@ export async function fetchPodcastEpisodes(
     id: string; title: string; summary: string | null;
     episode_no: number | null; season_no: number | null;
     storage_url: string | null; duration_ms: number | null;
+    has_audio: boolean;
   }>(
     `SELECT pe.id, pe.title, pe.summary, pe.episode_no, pe.season_no,
-            ar.storage_url, ar.duration_ms
+            ar.storage_url, ar.duration_ms,
+            (ea.episode_id IS NOT NULL) AS has_audio
        FROM podcast_episodes pe
        LEFT JOIN audio_renders ar ON ar.id = pe.render_id AND ar.state = 'ready'
+       LEFT JOIN episode_audio ea ON ea.episode_id = pe.id
       WHERE pe.approval_state = 'approved' AND pe.visibility = 'staff'
       ORDER BY pe.season_no DESC NULLS LAST, pe.episode_no DESC NULLS LAST, pe.created_at DESC
       LIMIT 200`,
@@ -337,7 +340,8 @@ export async function fetchPodcastEpisodes(
     summary: r.summary,
     episodeNo: r.episode_no,
     seasonNo: r.season_no,
-    audioUrl: r.storage_url,
+    // Player shows when either a rendered storage URL exists or we have stored bytes.
+    audioUrl: r.storage_url ?? (r.has_audio ? `/media/audio/${r.id}` : null),
     durationMin: r.duration_ms ? Math.round(r.duration_ms / 60000) : null,
   }));
 }
@@ -391,4 +395,22 @@ export async function fetchEpisodeMedia(
     [episodeId],
   );
   return rows[0]?.storage_url ?? null;
+}
+
+/** In-database audio bytes for one approved, staff-visible episode (or null). */
+export async function fetchEpisodeAudioBytes(
+  db: Db,
+  _viewer: Viewer,
+  episodeId: string,
+): Promise<{ bytes: Buffer; mime: string } | null> {
+  const { rows } = await db.query<{ audio: Buffer; mime_type: string | null }>(
+    `SELECT ea.audio, ea.mime_type
+       FROM podcast_episodes pe
+       JOIN episode_audio ea ON ea.episode_id = pe.id
+      WHERE pe.id = $1 AND pe.approval_state = 'approved' AND pe.visibility = 'staff'`,
+    [episodeId],
+  );
+  const r = rows[0];
+  if (!r) return null;
+  return { bytes: r.audio, mime: r.mime_type ?? "audio/mpeg" };
 }
