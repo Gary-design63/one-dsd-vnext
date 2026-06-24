@@ -111,10 +111,12 @@ export async function consultationNote(db: Db, viewer: Viewer, req: IncomingMess
 
 // --- Controls (Layer 10): consultant authority surface --------------
 import { renderControls } from "./pages/console/controls.js";
+import { renderCommand } from "./pages/console/command.js";
+import { delegate } from "../agents/orchestrator.js";
 import {
   getAutomationState, getCeiling, setAutomationState,
   recordOverride, listPersonas, recentOverrides,
-  setCeiling, setPersonaAutonomy, activityLedger,
+  setCeiling, setPersonaAutonomy, activityLedger, recentDelegations,
 } from "../agents/controls.js";
 
 export async function controlsPage(db: Db, viewer: Viewer, res: ServerResponse): Promise<void> {
@@ -160,6 +162,32 @@ export async function controlsSetPersona(db: Db, viewer: Viewer, req: IncomingMe
   const ok = await setPersonaAutonomy(db, viewer, String(form["key"] ?? ""), String(form["value"] ?? ""));
   if (!ok) return forbidden(res);
   redirect(res, "/console/controls");
+}
+
+// --- Command Center (Layer 10 / R5): the consultant operating surface --
+export async function commandPage(db: Db, viewer: Viewer, res: ServerResponse, url: URL): Promise<void> {
+  if (!canOperateConsole(viewer)) return forbidden(res);
+  const [automationState, ceiling, personas, delegations, ledger, counts] = await Promise.all([
+    getAutomationState(db), getCeiling(db), listPersonas(db), recentDelegations(db), activityLedger(db), fetchCounts(db),
+  ]);
+  const routed = url.searchParams.get("routed");
+  const lastPlan = routed
+    ? { persona: routed, autonomy: url.searchParams.get("auto") ?? "", rationale: url.searchParams.get("why") ?? "" }
+    : null;
+  sendHtml(res, 200, renderCommand({
+    nav: { viewer, active: "console" },
+    automationState, ceiling, personas, delegations, ledger, counts, lastPlan,
+  }));
+}
+
+export async function commandDispatch(db: Db, viewer: Viewer, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (!canOperateConsole(viewer)) return forbidden(res);
+  const form = await readFormBody(req);
+  const text = (form["need"] ?? "").trim();
+  if (!text) return redirect(res, "/console/command");
+  const plan = await delegate(db, viewer, { text });
+  const q = new URLSearchParams({ routed: plan.persona, auto: plan.autonomy, why: plan.rationale });
+  redirect(res, `/console/command?${q.toString()}`);
 }
 
 // --- Revision history + rollback (authority-only) -------------------
