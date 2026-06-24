@@ -33,6 +33,7 @@ export function renderConsoleHome(v: ConsoleHomeView): string {
         <li class="stat"><span class="stat__n">${v.counts.pending}</span><span class="stat__l">Awaiting review</span></li>
         <li class="stat"><span class="stat__n">${v.counts.inReview}</span><span class="stat__l">In review</span></li>
         <li class="stat"><span class="stat__n">${v.counts.consultationsOpen}</span><span class="stat__l"><a href="/console/consultations">Open consultations</a></span></li>
+        <li class="stat"><span class="stat__l"><a href="/console/command">Command Center</a></span></li>
         <li class="stat"><span class="stat__l"><a href="/console/controls">Controls &amp; automation</a></span></li>
         <li class="stat"><span class="stat__l"><a href="/console/history">Revision history &amp; rollback</a></span></li>
       </ul>
