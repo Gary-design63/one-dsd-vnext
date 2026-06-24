@@ -131,3 +131,23 @@ export async function activityLedger(db: Db, limit = 25): Promise<LedgerRow[]> {
   );
   return rows;
 }
+
+// ---- R5: command-center read model (in-flight + recent delegations) --
+export interface DelegationRow {
+  child_persona: string;
+  task: string;
+  autonomy_applied: string;
+  status: string;
+  created_at: Date;
+}
+
+/** Recent delegations the Chief of Staff has routed (the consultant's
+ *  dispatched work), newest first — surfaced on the Command Center. */
+export async function recentDelegations(db: Db, limit = 15): Promise<DelegationRow[]> {
+  const { rows } = await db.query<DelegationRow>(
+    `SELECT child_persona, task, autonomy_applied, status, created_at
+       FROM agent_delegations ORDER BY created_at DESC LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}
