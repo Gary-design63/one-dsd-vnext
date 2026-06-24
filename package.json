@@ -14,7 +14,7 @@
     "verify:migrations": "node scripts/check-migrations.mjs",
     "verify:spine": "node scripts/verify-spine.mjs",
     "verify:web": "node scripts/verify-web.mjs",
-    "test": "node --test 'dist/**/*.test.js'",
+    "test": "node --test $(find dist -name '*.test.js')",
     "verify": "npm run verify:migrations && npm run verify:spine && npm run verify:web && npm run typecheck && npm run build && npm run test",
     "ingest": "node scripts/ingest.mjs",
     "a11y": "node scripts/a11y-scan.mjs",
